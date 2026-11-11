@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>LUKZ TAG</title>
+<style>
+:root{--bg:#0d1117;--card:#161d27;--line:#263140;--fg:#eef3f8;--mut:#8a98aa;--acc:#b6ff3c;--acc2:#ff4d4d;--ok:#3cff9e}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none;-webkit-user-select:none;user-select:none}
+#c{position:fixed;inset:0;width:100%;height:100%;display:none;touch-action:none}
+#menu{position:fixed;inset:0;overflow:auto;padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 32px max(16px,env(safe-area-inset-left))}
+.wrap{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+h1{margin:8px 0 0;font-size:40px;letter-spacing:.06em;font-weight:900;color:var(--acc)}
+h1 small{display:block;font-size:13px;letter-spacing:.2em;color:var(--mut);font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px}
+h2{margin:0;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row>*{min-width:0}
+input[type=text]{flex:1;min-width:0;background:#0b1017;border:1px solid var(--line);color:var(--fg);border-radius:8px;padding:11px;font:inherit;-webkit-user-select:text;user-select:text}
+button{background:#222d3b;color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:11px 14px;font:inherit;font-weight:700;cursor:pointer}
+button.p{background:var(--acc);color:#10140a;border-color:var(--acc)}
+button.d{color:var(--acc2)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+button:disabled{opacity:.5}
+.id{font:800 22px ui-monospace,Menlo,monospace;letter-spacing:.12em;color:var(--acc)}
+.fr{display:flex;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.fr:first-child{border-top:0}
+.fr .n{flex:1;min-width:0;overflow-wrap:anywhere}
+.fr .s{font-size:12px;color:var(--mut)}
+.dot{width:9px;height:9px;border-radius:50%;background:#555;flex:none}
+.dot.on{background:var(--ok)}.dot.room{background:var(--acc)}
+#st{color:var(--mut);font-size:13px;min-height:18px}
+#st.err{color:var(--acc2)}
+.mut{color:var(--mut);font-size:13px}
+canvas#pv{width:160px;height:120px;border-radius:8px;background:#0b1017;border:1px solid var(--line)}
+#ov{position:fixed;inset:0;display:none;align-items:center;justify-content:center;text-align:center;background:rgba(6,9,13,.96);z-index:20;font-size:26px;font-weight:800;padding:24px;color:var(--acc)}
+#x{position:fixed;top:max(6px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:15;display:none;padding:4px 14px;font-size:12px;opacity:.55}
+label.k{display:flex;gap:8px;align-items:center}
+select,input[type=range]{background:#0b1017;color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit}
+input[type=range]{padding:0;flex:1}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<button id="x">SAIR</button>
+<div id="ov"></div>
+
+<div id="menu"><div class="wrap">
+  <h1>LUKZ TAG<small>PIQUE-PEGA EM VR · MULTIPLAYER</small></h1>
+
+  <div class="card">
+    <h2>Seu perfil</h2>
+    <div class="row"><input id="name" type="text" maxlength="12" placeholder="Seu nome" autocomplete="off"></div>
+    <div class="row"><span class="mut">Seu ID:</span><span class="id" id="myid">-----</span><button id="copy">Copiar</button></div>
+    <div class="mut">Passe esse ID para seus amigos. Eles adicionam você e entram na sua sala.</div>
+  </div>
+
+  <div class="card">
+    <h2>Jogar</h2>
+    <button class="p" id="pub">SALA PÚBLICA (aberta)</button>
+    <button id="priv">Criar minha sala (amigos entram pelo ID)</button>
+    <div id="st"></div>
+  </div>
+
+  <div class="card">
+    <h2>Amigos</h2>
+    <div class="row"><input id="fid" type="text" maxlength="8" placeholder="ID do amigo" autocapitalize="characters" autocomplete="off"><button id="fadd">Adicionar</button></div>
+    <div id="fl"><div class="mut">Nenhum amigo ainda.</div></div>
+  </div>
+
+  <div class="card">
+    <h2>Mãos e desempenho</h2>
+    <label class="k"><input type="checkbox" id="useHands" checked> Hand tracking pela câmera traseira</label>
+    <div class="row"><span class="mut">Sensibilidade ao andar</span><input type="range" id="sens" min="0.5" max="2" step="0.1" value="1"></div>
+    <div class="row"><span class="mut">Qualidade</span>
+      <select id="qual"><option value="0.5">Baixa (celular fraco)</option><option value="0.7" selected>Média</option><option value="1">Alta</option></select></div>
+    <div class="row"><button id="tst">Testar mãos</button><canvas id="pv" width="160" height="120"></canvas></div>
+    <div class="mut" id="hs">Mostre as duas mãos para a câmera de trás. Balance os braços para andar na direção em que você olha.</div>
+  </div>
+
+  <div class="mut">Segure o celular na horizontal. Configure tudo aqui, toque em jogar e só depois coloque o celular no VR box. A câmera de trás precisa ficar livre.</div>
+</div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const COLORS=[0xff7a1a,0x2fb6ff,0xb6ff3c,0xd65cff,0xffd21f,0x2fffd0,0xff5c8a,0xffffff];
+const ARENA=24, EYE=1.6, MAXP=8;
+const rnd=a=>a[Math.floor(Math.random()*a.length)];
+const ALPHA='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+/* ---------- perfil ---------- */
+let me={id:store.get('id',null),name:store.get('name','Jogador'),color:Math.floor(Math.random()*COLORS.length)};
+if(!me.id){me.id=Array.from({length:5},()=>rnd(ALPHA)).join('');store.set('id',me.id)}
+$('myid').textContent=me.id;$('name').value=me.name;
+$('name').addEventListener('input',()=>{me.name=$('name').value.trim().slice(0,12)||'Jogador';store.set('name',me.name)});
+$('copy').onclick=()=>{try{navigator.clipboard.writeText(me.id).then(()=>setSt('ID copiado.'),()=>setSt('Selecione e copie: '+me.id))}catch(e){setSt('Seu ID: '+me.id)}};
+function setSt(t,err){const e=$('st');e.textContent=t;e.className=err?'err':''}
+
+/* ---------- sensores: giroscópio ---------- */
+const rad=d=>d*Math.PI/180;
+let gyro=null,hasGyro=false,dragYaw=0,dragPitch=0;
+addEventListener('deviceorientation',e=>{if(e.alpha==null)return;gyro={a:rad(e.alpha),b:rad(e.beta),g:rad(e.gamma)};hasGyro=true});
+const zee=new THREE.Vector3(0,0,1),q0=new THREE.Quaternion(),q1=new THREE.Quaternion(-Math.sqrt(.5),0,0,Math.sqrt(.5)),eu=new THREE.Euler();
+const devQ=new THREE.Quaternion(),offQ=new THREE.Quaternion(),headQ=new THREE.Quaternion();
+function scrAngle(){const a=(screen.orientation&&screen.orientation.angle!=null)?screen.orientation.angle:(window.orientation||0);return rad(a)}
+function updateHeadQ(){
+  if(hasGyro&&gyro){eu.set(gyro.b,gyro.a,-gyro.g,'YXZ');devQ.setFromEuler(eu);devQ.multiply(q1);devQ.multiply(q0.setFromAxisAngle(zee,-scrAngle()));headQ.copy(offQ).multiply(devQ)}
+  else{eu.set(dragPitch,dragYaw,0,'YXZ');headQ.setFromEuler(eu)}
+}
+function recenter(){
+  if(!(hasGyro&&gyro))return;
+  eu.set(gyro.b,gyro.a,-gyro.g,'YXZ');devQ.setFromEuler(eu);devQ.multiply(q1);devQ.multiply(q0.setFromAxisAngle(zee,-scrAngle()));
+  const f=new THREE.Vector3(0,0,-1).applyQuaternion(devQ);const yaw=Math.atan2(-f.x,-f.z);
+  offQ.setFromAxisAngle(new THREE.Vector3(0,1,0),-yaw);
+}
+async function askMotion(){
+  try{if(typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission==='function'){await DeviceOrientationEvent.requestPermission()}}catch(e){}
+}
+
+/* ---------- hand tracking (MediaPipe Hands) ---------- */
+const H=[{p:new THREE.Vector3(-.28,-.45,-.35),v:0,seen:0,init:false,t:0},{p:new THREE.Vector3(.28,-.45,-.35),v:0,seen:0,init:false,t:0}];
+let video=null,handsObj=null,handsOn=false,handBusy=false,handCount=0,pvCtx=$('pv').getContext('2d'),previewOn=true,handsErr='';
+function loadScript(src){return new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=()=>no(new Error('script '+src));document.head.appendChild(s)})}
+async function initHands(){
+  if(handsOn)return true;
+  try{
+    $('hs').textContent='Abrindo câmera...';
+    const stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:320},height:{ideal:240},frameRate:{ideal:30}}});
+    video=document.createElement('video');video.setAttribute('playsinline','');video.muted=true;video.srcObject=stream;await video.play();
+    $('hs').textContent='Carregando modelo de mãos (só na primeira vez demora)...';
+    await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js');
+    handsObj=new Hands({locateFile:f=>'https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/'+f});
+    handsObj.setOptions({maxNumHands:2,modelComplexity:0,minDetectionConfidence:.6,minTrackingConfidence:.5,selfieMode:false});
+    handsObj.onResults(onHands);
+    handsOn=true;pump();
+    $('hs').textContent='Mãos prontas. Mostre-as para a câmera de trás.';
+    return true;
+  }catch(e){handsErr=String(e&&e.message||e);$('hs').textContent='Sem hand tracking ('+handsErr+'). Você ainda pode jogar tocando na tela para andar.';return false}
+}
+async function pump(){
+  if(!handsOn)return;
+  if(!handBusy&&video.readyState>=2){handBusy=true;try{await handsObj.send({image:video})}catch(e){}handBusy=false}
+  setTimeout(pump,previewOn?70:62);
+}
+function onHands(res){
+  const now=performance.now()/1000;const L=res.multiHandLandmarks||[];handCount=L.length;
+  if(previewOn){pvCtx.clearRect(0,0,160,120);pvCtx.drawImage(video,0,0,160,120);pvCtx.fillStyle='#b6ff3c';for(const h of L)for(const p of h){pvCtx.fillRect(p.x*160-1.5,p.y*120-1.5,3,3)}}
+  if(!L.length)return;
+  const ds=L.map(h=>{const w=h[0],m=h[9],sz=Math.hypot(w.x-m.x,w.y-m.y);return{x:m.x,y:m.y,sz}});
+  ds.sort((a,b)=>a.x-b.x);
+  const slots=ds.length===2?[0,1]:[ds[0].x<.5?0:1];
+  ds.forEach((d,i)=>{
+    const s=H[slots[i]];
+    const depth=Math.min(.75,Math.max(.22,.85-d.sz*2.2));
+    const tx=(d.x-.5)*1.25,ty=(.5-d.y)*.95-.08,tz=-depth;
+    if(!s.init){s.p.set(tx,ty,tz);s.init=true;s.t=now;s.seen=now;return}
+    const dt=Math.min(.3,Math.max(.03,now-s.t));
+    const nx=s.p.x+(tx-s.p.x)*.55,ny=s.p.y+(ty-s.p.y)*.55,nz=s.p.z+(tz-s.p.z)*.4;
+    const v=Math.hypot(nx-s.p.x,ny-s.p.y)/dt;
+    s.v=Math.min(4,s.v*.45+v*.55);
+    s.p.set(nx,ny,nz);s.t=now;s.seen=now;
+  });
+}
+function stopHands(){/* mantém a câmera ligada durante a sessão */}
+
+/* ---------- mundo ---------- */
+let renderer,scene,camL,camR,hudTex,hudCv,hudCx,hudMeshes=[];
+const boxes=[]; // {x,z,hx,hz}
+let inGame=false;
+const self={pos:new THREE.Vector3(0,EYE,0),speed:0,dir:new THREE.Vector3(0,0,-1),head:new THREE.Vector3(),hl:new THREE.Vector3(),hr:new THREE.Vector3()};
+const remotes=new Map(); // id -> {id,n,c,g,head,l,r,th,tl,tr}
+let itId=null,tt={},cool=0,flash=0;
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function initWorld(){
+  if(renderer)return;
+  const cv=$('c');
+  renderer=new THREE.WebGLRenderer({canvas:cv,antialias:false,powerPreference:'high-performance',alpha:false});
+  renderer.setClearColor(0x86c8ff);
+  scene=new THREE.Scene();scene.fog=new THREE.Fog(0x86c8ff,18,60);
+  scene.add(new THREE.HemisphereLight(0xffffff,0x6a7a88,.95));
+  const dl=new THREE.DirectionalLight(0xffffff,.6);dl.position.set(.5,1,.3);scene.add(dl);
+  // chão com xadrez leve
+  const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d');x.fillStyle='#3a4a5c';x.fillRect(0,0,64,64);x.fillStyle='#46586c';x.fillRect(0,0,32,32);x.fillRect(32,32,32,32);
+  const tex=new THREE.CanvasTexture(c);tex.wrapS=tex.wrapT=THREE.RepeatWrapping;tex.repeat.set(ARENA,ARENA);tex.magFilter=THREE.NearestFilter;
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(ARENA*2,ARENA*2),new THREE.MeshLambertMaterial({map:tex}));floor.rotation.x=-Math.PI/2;scene.add(floor);
+  // paredes
+  const wm=new THREE.MeshLambertMaterial({color:0x22303f});
+  [[0,-ARENA,ARENA,.5],[0,ARENA,ARENA,.5],[-ARENA,0,.5,ARENA],[ARENA,0,.5,ARENA]].forEach(a=>{const m=new THREE.Mesh(new THREE.BoxGeometry(a[2]*2,6,a[3]*2),wm);m.position.set(a[0],3,a[1]);scene.add(m)});
+  // obstáculos (sempre iguais para todos: semente fixa)
+  const R=mulberry(20251111);const pal=[0xff7a1a,0x2fb6ff,0xb6ff3c,0xd65cff,0xffd21f,0x2fffd0];
+  const mats=pal.map(c=>new THREE.MeshLambertMaterial({color:c}));
+  for(let i=0;i<22;i++){
+    const w=1+R()*3,d=1+R()*3,h=1+R()*3.5,px=(R()*2-1)*(ARENA-4),pz=(R()*2-1)*(ARENA-4);
+    if(Math.hypot(px,pz)<4){continue}
+    const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mats[i%mats.length]);m.position.set(px,h/2,pz);scene.add(m);
+    boxes.push({x:px,z:pz,hx:w/2,hz:d/2});
+  }
+  camL=new THREE.PerspectiveCamera(82,1,.05,90);camR=new THREE.PerspectiveCamera(82,1,.05,90);
+  scene.add(camL);scene.add(camR);
+  // HUD
+  hudCv=document.createElement('canvas');hudCv.width=512;hudCv.height=128;hudCx=hudCv.getContext('2d');
+  hudTex=new THREE.CanvasTexture(hudCv);
+  const hm=new THREE.MeshBasicMaterial({map:hudTex,transparent:true,depthTest:false,fog:false});
+  [camL,camR].forEach(cam=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(.56,.14),hm);m.position.set(0,.3,-.8);m.renderOrder=999;cam.add(m);hudMeshes.push(m)});
+  // mãos próprias
+  const hg=new THREE.SphereGeometry(.06,8,6),hmat=new THREE.MeshBasicMaterial({color:COLORS[me.color]});
+  self.mL=new THREE.Mesh(hg,hmat);self.mR=new THREE.Mesh(hg,hmat);scene.add(self.mL);scene.add(self.mR);
+}
+function resize(){
+  if(!renderer)return;
+  const q=parseFloat($('qual').value)||.7;
+  renderer.setPixelRatio(Math.min(devicePixelRatio||1,2)*q);
+  renderer.setSize(innerWidth,innerHeight,false);
+  camL.aspect=camR.aspect=(innerWidth/2)/innerHeight;camL.updateProjectionMatrix();camR.updateProjectionMatrix();
+}
+addEventListener('resize',resize);
+
+/* avatares */
+const hg2=new THREE.SphereGeometry(.09,8,6),hdg=new THREE.SphereGeometry(.19,10,8),bdg=new THREE.CylinderGeometry(.16,.1,.55,8),mkg=new THREE.OctahedronGeometry(.16,0);
+function makeAvatar(c){
+  const g=new THREE.Group();const col=COLORS[c%COLORS.length];
+  const mat=new THREE.MeshLambertMaterial({color:col});
+  const head=new THREE.Mesh(hdg,mat);g.add(head);
+  const body=new THREE.Mesh(bdg,mat);body.position.y=-.5;g.add(body);
+  const eyeM=new THREE.MeshBasicMaterial({color:0x101010});
+  const e1=new THREE.Mesh(new THREE.SphereGeometry(.035,6,4),eyeM),e2=e1.clone();e1.position.set(-.07,.03,-.17);e2.position.set(.07,.03,-.17);g.add(e1,e2);
+  const mk=new THREE.Mesh(mkg,new THREE.MeshBasicMaterial({color:0xff2d2d}));mk.position.y=.45;mk.visible=false;g.add(mk);
+  const hl=new THREE.Mesh(hg2,mat),hr=new THREE.Mesh(hg2,mat);
+  scene.add(g);scene.add(hl);scene.add(hr);
+  return{g,hl,hr,mk,mat,head};
+}
+function removeAvatar(r){scene.remove(r.g);scene.remove(r.hl);scene.remove(r.hr)}
+function ensureRemote(id,n,c){
+  let r=remotes.get(id);
+  if(!r){const a=makeAvatar(c);r={id,n,c,a,head:new THREE.Vector3(0,EYE,0),l:new THREE.Vector3(),r:new THREE.Vector3(),th:new THREE.Vector3(0,EYE,0),tl:new THREE.Vector3(),tr:new THREE.Vector3(),q:new THREE.Quaternion(),tq:new THREE.Quaternion(),fresh:true};remotes.set(id,r)}
+  r.n=n;return r;
+}
+
+/* ---------- rede (PeerJS: WebRTC com sinalização pública gratuita) ---------- */
+let personal=null,roomPeer=null,hostConns=new Map(),clientConn=null,role=null,currentRoom=null,roomLabel='';
+const pending={};
+function netErr(t){setSt(t,true)}
+function initPersonal(){
+  return new Promise(res=>{
+    if(typeof Peer==='undefined'){netErr('Não consegui carregar a rede (PeerJS). Verifique a internet.');res(false);return}
+    const done=v=>{if(!done.d){done.d=1;res(v)}};
+    personal=new Peer('lt-u-'+me.id);
+    personal.on('open',()=>done(true));
+    personal.on('error',e=>{
+      if(e.type==='peer-unavailable'){const m=/lt-[\w-]+/.exec(e.message||'');if(m&&pending[m[0]])pending[m[0]](null)}
+      else if(e.type==='unavailable-id'){netErr('Seu ID já está aberto em outra aba ou aparelho.');done(false)}
+      else if(!done.d){netErr('Erro de rede: '+e.type);done(false)}
+    });
+    personal.on('connection',c=>{c.on('data',d=>{if(d&&d.t==='who'){try{c.send({t:'room',room:currentRoom,name:me.name})}catch(e){}}})});
+    setTimeout(()=>done(!!personal.open),9000);
+  });
+}
+function dial(peerId,ms){
+  return new Promise(res=>{
+    let fin=false;const done=v=>{if(fin)return;fin=true;delete pending[peerId];clearTimeout(tm);res(v)};
+    pending[peerId]=()=>done(null);
+    const c=personal.connect(peerId,{reliable:false,serialization:'json'});
+    c.on('open',()=>done(c));c.on('error',()=>done(null));
+    const tm=setTimeout(()=>{try{c.close()}catch(e){}done(null)},ms||5000);
+  });
+}
+function waitMsg(c,types,ms){
+  return new Promise(res=>{
+    const tm=setTimeout(()=>res(null),ms||4000);
+    const h=d=>{if(d&&types.includes(d.t)){clearTimeout(tm);c.off&&c.off('data',h);res(d)}};
+    c.on('data',h);
+  });
+}
+async function joinRoom(roomId){
+  const c=await dial(roomId,6000);if(!c)return 'none';
+  c.send({t:'h',id:me.id,n:me.name,c:me.color});
+  const r=await waitMsg(c,['ok','full'],4000);
+  if(!r)return 'none';if(r.t==='full')return 'full';
+  clientConn=c;role='client';currentRoom=roomId;
+  c.on('data',onClientData);
+  c.on('close',()=>{if(inGame)leaveToMenu('Conexão com a sala perdida.')});
+  return 'ok';
+}
+function startHost(peerId){
+  return new Promise(res=>{
+    let fin=false;const done=v=>{if(!fin){fin=true;res(v)}};
+    const rp=new Peer(peerId);
+    rp.on('open',()=>{roomPeer=rp;role='host';currentRoom=peerId;hostSetup();done(true)});
+    rp.on('error',e=>{if(!fin){try{rp.destroy()}catch(_){}done(false)}});
+    setTimeout(()=>{if(!fin){try{rp.destroy()}catch(_){}done(false)}},8000);
+  });
+}
+const hostPlayers=new Map(); // id -> {id,n,c,head,l,r,last}
+function hostSetup(){
+  roomPeer.on('connection',c=>{
+    let pid=null;
+    c.on('data',d=>{
+      if(!d)return;
+      if(d.t==='h'){
+        if(hostPlayers.size+1>=MAXP&&!hostPlayers.has(d.id)){try{c.send({t:'full'})}catch(e){}return}
+        pid=d.id;hostConns.set(pid,c);
+        hostPlayers.set(pid,{id:pid,n:String(d.n||'?').slice(0,12),c:d.c|0,head:[0,EYE,0],l:[0,0,0],r:[0,0,0],last:performance.now()});
+        c.send({t:'ok'});
+      }else if(d.t==='s'&&pid&&hostPlayers.has(pid)){
+        const p=hostPlayers.get(pid);p.head=d.h;p.l=d.l;p.r=d.r;p.last=performance.now();
+      }
+    });
+    c.on('close',()=>{if(pid){hostConns.delete(pid);hostPlayers.delete(pid);if(itId===pid)itId=null}});
+  });
+}
+function hostTick(dt){
+  // remove inativos
+  const now=performance.now();
+  for(const [id,p] of hostPlayers){if(now-p.last>8000){hostPlayers.delete(id);const c=hostConns.get(id);try{c&&c.close()}catch(e){}hostConns.delete(id);if(itId===id)itId=null}}
+  const all=[{id:me.id,n:me.name,c:me.color,head:self.head.toArray(),l:self.hl.toArray(),r:self.hr.toArray()}];
+  for(const p of hostPlayers.values())all.push(p);
+  if(all.length>=2){
+    if(!itId||!all.find(p=>p.id===itId)){itId=rnd(all).id;cool=3}
+    cool=Math.max(0,cool-dt);
+    tt[itId]=(tt[itId]||0)+dt;
+    if(cool<=0){
+      const it=all.find(p=>p.id===itId);
+      const hp=[new THREE.Vector3().fromArray(it.head),new THREE.Vector3().fromArray(it.l),new THREE.Vector3().fromArray(it.r)];
+      for(const o of all){
+        if(o.id===itId)continue;
+        const oh=new THREE.Vector3().fromArray(o.head),ob=oh.clone();ob.y-=.4;
+        let hit=hp[1].distanceTo(oh)<.55||hp[2].distanceTo(oh)<.55||hp[1].distanceTo(ob)<.55||hp[2].distanceTo(ob)<.55;
+        if(!hit){const dx=hp[0].x-oh.x,dz=hp[0].z-oh.z;hit=Math.hypot(dx,dz)<.75}
+        if(hit){itId=o.id;cool=3;break}
+      }
+    }
+  }else{itId=null;cool=0}
+  if(itId===me.id&&false){}
+  const f=v=>[Math.round(v[0]*100)/100,Math.round(v[1]*100)/100,Math.round(v[2]*100)/100];
+  const msg={t:'w',it:itId,cd:Math.round(cool*10)/10,tt:tt,ps:all.map(p=>[p.id,p.n,p.c,f(p.head),f(p.l),f(p.r)])};
+  for(const c of hostConns.values()){try{c.send(msg)}catch(e){}}
+  applyWorld(msg);
+}
+function onClientData(d){if(d&&d.t==='w')applyWorld(d)}
+function applyWorld(m){
+  const prevIt=itId;itId=m.it;tt=m.tt||tt;cool=m.cd||0;
+  if(itId===me.id&&prevIt!==me.id){flash=1;try{navigator.vibrate&&navigator.vibrate(250)}catch(e){}}
+  const seen=new Set();
+  for(const e of m.ps){
+    const id=e[0];if(id===me.id)continue;seen.add(id);
+    const r=ensureRemote(id,e[1],e[2]);
+    r.th.fromArray(e[3]);r.tl.fromArray(e[4]);r.tr.fromArray(e[5]);
+    if(r.fresh){r.head.copy(r.th);r.l.copy(r.tl);r.r.copy(r.tr);r.fresh=false}
+  }
+  for(const [id,r] of remotes){if(!seen.has(id)){removeAvatar(r.a);remotes.delete(id)}}
+}
+function clientSend(){
+  if(role!=='client'||!clientConn||!clientConn.open)return;
+  const f=v=>[Math.round(v.x*100)/100,Math.round(v.y*100)/100,Math.round(v.z*100)/100];
+  try{clientConn.send({t:'s',h:f(self.head),l:f(self.hl),r:f(self.hr)})}catch(e){}
+}
+
+/* ---------- menu: conectar ---------- */
+let busy=false;
+async function prepare(){
+  setSt('Preparando sensores...');
+  await askMotion();
+  if($('useHands').checked)await initHands();
+  initWorld();
+  if(!personal||personal.destroyed){const ok=await initPersonal();if(!ok)return false}
+  return true;
+}
+async function goPublic(){
+  if(busy)return;busy=true;lock(true);
+  try{
+    if(!await prepare()){return}
+    setSt('Procurando sala pública...');
+    let joined=false;
+    for(let i=1;i<=6&&!joined;i++){
+      const pid='lt-pub-'+i;
+      const r=await joinRoom(pid);
+      if(r==='ok'){roomLabel='Pública '+i;joined=true;break}
+      if(r==='full')continue;
+      setSt('Abrindo sala pública '+i+'...');
+      if(await startHost(pid)){roomLabel='Pública '+i;joined=true;break}
+    }
+    if(!joined){netErr('Não achei sala livre. Tente de novo em instantes.');return}
+    beginCountdown();
+  }finally{busy=false;lock(false)}
+}
+async function goPrivate(){
+  if(busy)return;busy=true;lock(true);
+  try{
+    if(!await prepare())return;
+    setSt('Criando sua sala...');
+    const pid='lt-r-'+me.id;
+    if(!await startHost(pid)){netErr('Não consegui criar a sala. Tente de novo.');return}
+    roomLabel='Sala de '+me.name;beginCountdown();
+  }finally{busy=false;lock(false)}
+}
+async function goFriend(fid,room){
+  if(busy)return;busy=true;lock(true);
+  try{
+    if(!await prepare())return;
+    setSt('Entrando na sala do amigo...');
+    const r=await joinRoom(room);
+    if(r==='full'){netErr('A sala está cheia.');return}
+    if(r!=='ok'){netErr('Não consegui entrar. O amigo ainda está na sala?');return}
+    roomLabel='Sala do amigo';beginCountdown();
+  }finally{busy=false;lock(false)}
+}
+function lock(v){['pub','priv'].forEach(i=>$(i).disabled=v)}
+$('pub').onclick=goPublic;$('priv').onclick=goPrivate;
+$('tst').onclick=async()=>{await askMotion();await initHands()};
+$('qual').onchange=resize;
+
+/* ---------- amigos ---------- */
+let friends=store.get('friends',[]);
+function saveF(){store.set('friends',friends)}
+const fstat={};
+function renderF(){
+  const box=$('fl');box.innerHTML='';
+  if(!friends.length){box.innerHTML='<div class="mut">Nenhum amigo ainda.</div>';return}
+  friends.forEach(f=>{
+    const s=fstat[f.id]||{state:'?'};
+    const row=document.createElement('div');row.className='fr';
+    const dot=document.createElement('span');dot.className='dot'+(s.state==='room'?' room':s.state==='on'?' on':'');
+    const n=document.createElement('div');n.className='n';
+    const nm=document.createElement('div');nm.textContent=(s.name||f.name||'Amigo')+'  ('+f.id+')';
+    const st=document.createElement('div');st.className='s';st.textContent=s.state==='room'?'em uma sala':s.state==='on'?'online, sem sala':s.state==='off'?'offline':'verificando...';
+    n.append(nm,st);row.append(dot,n);
+    if(s.state==='room'){const b=document.createElement('button');b.className='p';b.textContent='Entrar';b.onclick=()=>goFriend(f.id,s.room);row.append(b)}
+    const x=document.createElement('button');x.className='d';x.textContent='✕';x.setAttribute('aria-label','Remover');x.onclick=()=>{friends=friends.filter(z=>z.id!==f.id);saveF();renderF()};row.append(x);
+    box.append(row);
+  });
+}
+async function checkFriend(f){
+  if(!personal||!personal.open){return}
+  const c=await dial('lt-u-'+f.id,5000);
+  if(!c){fstat[f.id]={state:'off'};return}
+  c.send({t:'who'});
+  const r=await waitMsg(c,['room'],3000);
+  try{c.close()}catch(e){}
+  if(!r){fstat[f.id]={state:'on'};return}
+  if(r.name&&r.name!==f.name){f.name=r.name;saveF()}
+  fstat[f.id]=r.room?{state:'room',room:r.room,name:r.name}:{state:'on',name:r.name};
+}
+async function checkAll(){
+  if(inGame||!personal||!personal.open)return;
+  for(const f of friends){await checkFriend(f);renderF()}
+}
+$('fadd').onclick=()=>{
+  const id=$('fid').value.trim().toUpperCase();
+  if(id.length<4){setSt('Digite o ID do amigo.',true);return}
+  if(id===me.id){setSt('Esse é o seu próprio ID.',true);return}
+  if(!friends.find(f=>f.id===id)){friends.push({id,name:'Amigo'});saveF()}
+  $('fid').value='';renderF();setSt('Amigo adicionado.');
+  const f=friends.find(z=>z.id===id);checkFriend(f).then(renderF);
+};
+renderF();
+// conecta cedo para os amigos aparecerem sem precisar apertar nada
+initPersonal().then(ok=>{if(ok){checkAll();setInterval(checkAll,15000)}});
+
+/* ---------- jogo ---------- */
+function beginCountdown(){
+  inGame=false;
+  const ov=$('ov');ov.style.display='flex';
+  let n=7;
+  (async()=>{
+    try{const d=document.documentElement;if(d.requestFullscreen)await d.requestFullscreen({navigationUI:'hide'})}catch(e){}
+    try{await screen.orientation.lock('landscape')}catch(e){}
+    try{if(navigator.wakeLock)navigator.wakeLock.request('screen').catch(()=>{})}catch(e){}
+  })();
+  const tick=()=>{
+    if(n>0){ov.innerHTML='Coloque o celular<br>no VR box<br><span style="font-size:60px">'+n+'</span>';n--;setTimeout(tick,1000)}
+    else{ov.style.display='none';startGame()}
+  };tick();
+}
+function startGame(){
+  recenter();
+  previewOn=false;
+  $('menu').style.display='none';$('c').style.display='block';$('x').style.display='block';
+  resize();
+  const a=Math.random()*Math.PI*2,r=3+Math.random()*10;
+  self.pos.set(Math.cos(a)*r,EYE,Math.sin(a)*r);self.speed=0;
+  inGame=true;last=performance.now();acc=0;netAcc=0;
+  requestAnimationFrame(loop);
+}
+$('x').onclick=()=>leaveToMenu();
+function leaveToMenu(msg){location.reload()}
+
+let touchWalk=false,keys={};
+$('c').addEventListener('touchstart',e=>{touchWalk=true;e.preventDefault()},{passive:false});
+$('c').addEventListener('touchend',()=>{touchWalk=false});
+let dragging=false,lx=0,ly=0;
+$('c').addEventListener('mousedown',e=>{dragging=true;lx=e.clientX;ly=e.clientY});
+addEventListener('mouseup',()=>dragging=false);
+addEventListener('mousemove',e=>{if(!dragging||hasGyro)return;dragYaw-=(e.clientX-lx)*.005;dragPitch=Math.max(-1.4,Math.min(1.4,dragPitch-(e.clientY-ly)*.005));lx=e.clientX;ly=e.clientY});
+addEventListener('keydown',e=>keys[e.key.toLowerCase()]=true);addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+
+let last=0,acc=0,netAcc=0,hudAcc=0;
+const tmpF=new THREE.Vector3(),tmpR=new THREE.Vector3(),tmpH=new THREE.Vector3();
+function loop(t){
+  if(!inGame)return;
+  requestAnimationFrame(loop);
+  const dt=Math.min(.1,(t-last)/1000);last=t;
+  update(dt);
+  draw();
+}
+function update(dt){
+  updateHeadQ();
+  const now=performance.now()/1000;
+  // direção para onde anda: horizontal, na direção do olhar
+  tmpF.set(0,0,-1).applyQuaternion(headQ);tmpF.y=0;
+  if(tmpF.lengthSq()>.01){tmpF.normalize();self.dir.copy(tmpF)}
+  // mãos: se perder de vista, voltam à posição de repouso e a velocidade zera
+  const rest=[[-.28,-.45,-.35],[.28,-.45,-.35]];
+  let drive=0;const sens=parseFloat($('sens').value)||1;
+  for(let i=0;i<2;i++){
+    const s=H[i];
+    if(now-s.seen>.35){s.v*=Math.exp(-9*dt);s.p.x+=(rest[i][0]-s.p.x)*Math.min(1,3*dt);s.p.y+=(rest[i][1]-s.p.y)*Math.min(1,3*dt);s.p.z+=(rest[i][2]-s.p.z)*Math.min(1,3*dt)}
+    drive+=Math.max(0,s.v-.4);
+  }
+  self.speed+=drive*sens*8*dt;
+  if(touchWalk||keys['w']||keys['arrowup'])self.speed+=6*dt;
+  self.speed=Math.min(self.speed,5.2);self.speed*=Math.exp(-2.2*dt);
+  self.pos.addScaledVector(self.dir,self.speed*dt);
+  // colisão
+  const R=.35;
+  for(const b of boxes){
+    const cx=Math.max(b.x-b.hx,Math.min(self.pos.x,b.x+b.hx)),cz=Math.max(b.z-b.hz,Math.min(self.pos.z,b.z+b.hz));
+    const dx=self.pos.x-cx,dz=self.pos.z-cz,d=Math.hypot(dx,dz);
+    if(d<R){
+      if(d>1e-4){self.pos.x+=dx/d*(R-d);self.pos.z+=dz/d*(R-d)}
+      else{self.pos.x+=R}
+      self.speed*=.6;
+    }
+  }
+  const lim=ARENA-.6;self.pos.x=Math.max(-lim,Math.min(lim,self.pos.x));self.pos.z=Math.max(-lim,Math.min(lim,self.pos.z));
+  self.head.copy(self.pos);
+  tmpH.copy(H[0].p).applyQuaternion(headQ).add(self.head);self.hl.copy(tmpH);
+  tmpH.copy(H[1].p).applyQuaternion(headQ).add(self.head);self.hr.copy(tmpH);
+  self.mL.position.copy(self.hl);self.mR.position.copy(self.hr);
+  // rede
+  netAcc+=dt;
+  if(netAcc>=.066){
+    if(role==='host')hostTick(netAcc);else clientSend();
+    netAcc=0;
+  }
+  // avatares remotos
+  const k=Math.min(1,dt*12);
+  for(const r of remotes.values()){
+    r.head.lerp(r.th,k);r.l.lerp(r.tl,k);r.r.lerp(r.tr,k);
+    r.a.g.position.copy(r.head);r.a.hl.position.copy(r.l);r.a.hr.position.copy(r.r);
+    // olha na direção do movimento (aprox.: para onde a mão média aponta)
+    const mx=(r.l.x+r.r.x)/2-r.head.x,mz=(r.l.z+r.r.z)/2-r.head.z;
+    if(Math.hypot(mx,mz)>.15)r.a.g.rotation.y=Math.atan2(-mx,-mz);
+    const isIt=itId===r.id;r.a.mk.visible=isIt;if(isIt)r.a.mk.rotation.y+=dt*3;
+    r.a.mat.color.setHex(isIt?0xff3030:COLORS[r.c%COLORS.length]);
+  }
+  flash=Math.max(0,flash-dt*1.4);
+  hudAcc+=dt;if(hudAcc>.25){hudAcc=0;drawHud()}
+}
+function drawHud(){
+  const x=hudCx;x.clearRect(0,0,512,128);
+  x.fillStyle=flash>0?'rgba(255,40,40,.85)':'rgba(8,12,18,.62)';x.fillRect(0,0,512,128);
+  x.textAlign='center';x.textBaseline='middle';
+  let l1,col='#eef3f8';
+  const total=remotes.size+1;
+  if(total<2){l1='AGUARDANDO JOGADORES';col='#ffd21f'}
+  else if(itId===me.id){l1='VOCÊ PEGA!';col='#ff6060'}
+  else{const r=remotes.get(itId);l1='FUJA DE '+(r?r.n.toUpperCase():'?');col='#b6ff3c'}
+  x.fillStyle=col;x.font='800 44px system-ui,sans-serif';x.fillText(l1,256,40);
+  x.fillStyle='#c7d2df';x.font='600 24px system-ui,sans-serif';
+  const mine=Math.round(tt[me.id]||0);
+  x.fillText(roomLabel+' · '+total+' jog. · pegador: '+mine+'s · mãos: '+handCount,256,92);
+  hudTex.needsUpdate=true;
+}
+const rightV=new THREE.Vector3();
+function draw(){
+  const W=innerWidth,Hh=innerHeight;
+  renderer.setScissorTest(true);
+  rightV.set(1,0,0).applyQuaternion(headQ);
+  [[camL,-1,0],[camR,1,W/2]].forEach(a=>{
+    const cam=a[0];cam.position.copy(self.head).addScaledVector(rightV,a[1]*.032);cam.quaternion.copy(headQ);
+    renderer.setViewport(a[2],0,W/2,Hh);renderer.setScissor(a[2],0,W/2,Hh);
+    renderer.render(scene,cam);
+  });
+}
+window.__luk={me};
+})();
+</script>
+</body>
+</html>
